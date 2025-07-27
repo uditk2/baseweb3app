@@ -1,0 +1,4 @@
+# Python dependencies for build tools and native packages
+# These are mainly needed for building native Node.js modules that require Python
+setuptools>=65.0.0
+wheel>=0.37.0
