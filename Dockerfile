@@ -1,41 +1,32 @@
-# Use the official Node.js image with Python support
-FROM node:22-bullseye
 
-# Install Python and pip (needed for web3 packages and native dependencies)
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Single stage with aggressive cleanup
+FROM node:22-alpine
 
-# Create symbolic links for python and pip
-RUN ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip
+# Install Python + build tools, then immediately clean up what's not needed
+RUN apk add --no-cache python3 py3-pip && \
+    apk add --virtual .build-deps make g++ python3-dev && \
+    ln -sf /usr/bin/python3 /usr/bin/python
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if available)
+# Copy and install dependencies
 COPY package*.json ./
+RUN if [ -f package-lock.json ]; then \
+        npm ci --only=production; \
+    else \
+        npm install --only=production; \
+    fi && \
+    npm cache clean --force
 
-# Install Node.js dependencies
-RUN npm install
-
-# Copy Python requirements if they exist (optional for additional Python packages)
-COPY requirements.txt* ./
-
-# Install Python dependencies if requirements.txt exists
-RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-# Copy the rest of the application code
+# Copy source and build
 COPY . .
-
-# Create next.js build
 RUN npm run build
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Clean up build tools but keep Python runtime
+RUN apk del .build-deps && \
+    rm -rf /var/cache/apk/* /tmp/* /root/.cache /root/.npm && \
+    rm -rf .git README.md *.md docs examples tests src components pages styles && \
+    find /app -name "*.map" -delete
 
-# Start the application
+EXPOSE 3000
 CMD ["npm", "start"]
