@@ -1,8 +1,7 @@
-import styles from './page.module.css'
-
 export default function Home() {
   return (
-    <main className={styles.main}>
+    <main className="min-h-screen p-6">
+      {/* Your content goes here */}
     </main>
   )
 }
